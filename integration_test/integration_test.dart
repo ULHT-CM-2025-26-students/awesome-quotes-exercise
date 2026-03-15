@@ -1,6 +1,6 @@
 import 'package:integration_test/integration_test.dart';
 
-import '../test/teacher/widget_teacher_tests.dart';
+import '../test/teacher/widget_teacher_test.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
