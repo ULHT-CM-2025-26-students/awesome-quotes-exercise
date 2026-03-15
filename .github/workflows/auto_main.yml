@@ -1,0 +1,126 @@
+name: Auto Main
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  checks: write
+  actions: read
+
+jobs:
+  check-tests-integrity:
+    name: Check Tests Integrity
+    runs-on: ubuntu-latest
+    outputs:
+      exists: ${{ steps.optional.outputs.exists }}
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Validate GHA
+        run: |
+          GENERATED_HASH=$(find .github -type f -name "*.yaml" -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            | sha256sum \
+            | awk '{ print $1 }')
+
+          if [ "$GENERATED_HASH" != "$EXPECTED_GHA_HASH" ]; then
+            echo "GENERATED_HASH: $GENERATED_HASH"
+            echo "🚨🚓 Não deves modificar os ficheiros do GitHub Actions, se não foram modificados contacta o professor 🚨🚓"
+            exit 1
+          fi
+
+      - name: Validate teacher tests hash
+        run: |
+          GENERATED_HASH=$(find test/teacher -type f -name "*.dart" -print0 \
+            | sort -z \
+            | xargs -0 sha256sum \
+            | sha256sum \
+            | awk '{ print $1 }')
+
+          if [ "$GENERATED_HASH" != "$EXPECTED_TESTS_HASH" ]; then
+            echo "GENERATED_HASH: $GENERATED_HASH"
+            echo "🚨🚓 Não deves modificar os testes, se não foram modificados contacta o professor 🚨🚓"
+            exit 1
+          fi
+
+    env:
+      EXPECTED_GHA_HASH: ${{ secrets.AWESOME_QUOTES_GHA_HASH }}
+      EXPECTED_TESTS_HASH: ${{ secrets.AWESOME_QUOTES_TESTS_HASH }}
+
+  tests:
+    name: Tests
+    needs: check-tests-integrity
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: ./.github/actions/setup_flutter
+
+      - name: Dart Analyze check
+        id: dart_analyze
+        uses: education/autograding-command-grader@v1
+        with:
+          test-name: Dart Analyze check
+          command: dart analyze
+          timeout: 10
+          max-score: 1
+
+      - name: Test 1
+        id: test1
+        uses: education/autograding-command-grader@v1
+        with:
+          test-name: "Shows quote page, hit next and get a new quote"
+          command: flutter test --name "Shows quote page, hit next and get a new quote"
+          timeout: 10
+          max-score: 1
+
+      - name: Test 2
+        id: test2
+        uses: education/autograding-command-grader@v1
+        with:
+          test-name: "Shows quote page"
+          command: flutter test --name "Shows quote page"
+          timeout: 10
+          max-score: 1
+
+      - name: Test 3
+        id: test3
+        uses: education/autograding-command-grader@v1
+        with:
+          test-name: "Navigate to favorites and back to quote"
+          command: flutter test --name "Navigate to favorites and back to quote"
+          timeout: 10
+          max-score: 1
+
+      - name: Test 4
+        id: test4
+        uses: education/autograding-command-grader@v1
+        with:
+          test-name: "Mark as favorite and navigate to favorites"
+          command: flutter test --name "Mark as favorite and navigate to favorites"
+          timeout: 10
+          max-score: 1
+
+      - name: Autograding Reporter
+        uses: mstavares/autograding-grading-reporter@v1.0.2
+        with:
+          runners: dart_analyze,test1,test2,test3,test4
+        env:
+          DART_ANALYZE_RESULTS: ${{ steps.dart_analyze.outputs.result }}
+          TEST1_RESULTS: ${{ steps.test1.outputs.result }}
+          TEST2_RESULTS: ${{ steps.test2.outputs.result }}
+          TEST3_RESULTS: ${{ steps.test3.outputs.result }}
+          TEST4_RESULTS: ${{ steps.test4.outputs.result }}
+          AUTHORS_AMOUNT: "${{vars.AWESOME_QUOTES_AUTHORS_AMOUNT}}"
+          SHEETS_CREDENTIALS: "${{secrets.SHEETS_CREDENTIALS}}"
+          SPREADSHEET_ID: "${{vars.SPREADSHEET_ID}}"
+          WORKSHEET_NAME: "${{vars.AWESOME_QUOTES}}"
