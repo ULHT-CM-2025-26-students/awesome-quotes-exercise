@@ -15,8 +15,6 @@ jobs:
   check-tests-integrity:
     name: Check Tests Integrity
     runs-on: ubuntu-latest
-    outputs:
-      exists: ${{ steps.optional.outputs.exists }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -111,7 +109,7 @@ jobs:
           max-score: 1
 
       - name: Autograding Reporter
-        uses: mstavares/autograding-grading-reporter@v1.0.2
+        uses: mstavares/autograding-grading-reporter@v1.0.4
         with:
           runners: dart_analyze,test1,test2,test3,test4
         env:
